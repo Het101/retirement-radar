@@ -5,6 +5,7 @@ const { execFile } = require('node:child_process');
 const { SEVERITY, loadRetirements, evaluate, sortFindings, failsAt } = require('./radar');
 
 const HELP = `Usage: retirement-radar scan [options]
+       retirement-radar --version
 
 Options:
   --region a,b       Regions to scan (default: every enabled region)
@@ -97,6 +98,7 @@ function table(findings) {
 }
 
 async function main(argv = process.argv.slice(2)) {
+  if (argv[0] === '--version' || argv[0] === '-v') { console.log(require('../package.json').version); return 0; }
   let o;
   try { o = parseArgs(argv); } catch (e) { console.error(e.message + '\n\n' + HELP); return 2; }
   if (o.cmd !== 'scan') { console.log(HELP); return o.cmd ? 2 : 0; }

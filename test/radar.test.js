@@ -70,3 +70,34 @@ test('scan: one failing service becomes a warning, not a crash', async () => {
   assert.deepEqual(f, []);
   assert.deepEqual(warnings, ['us-east-1 RDS: AccessDenied']);
 });
+
+// The two promises in SECURITY.md, enforced rather than stated.
+test('read-only: a scan only calls list/describe/get operations', async () => {
+  const ops = new Set();
+  const aws = async (args) => {
+    ops.add(`${args[0]} ${args[1]}`);
+    return { clusters: ['c'], cluster: { version: '1.30' }, DBInstances: [], DBClusters: [], Functions: [], Regions: [{ RegionName: 'us-east-1' }] };
+  };
+  await scan({ aws, db, now: NOW }); // no regions: exercises describe-regions too
+  for (const op of ops) assert.match(op.split(' ')[1], /^(list|describe|get)-/, `${op} is not a read-only operation`);
+  assert.ok(ops.size >= 6, 'every service was scanned');
+});
+
+test('local: the code has no network access of its own', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const dir = path.join(__dirname, '..', 'src');
+  for (const f of fs.readdirSync(dir)) {
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    assert.doesNotMatch(src, /require\(['"](node:)?(https?|http2|net|tls|dgram)['"]\)|fetch\(|XMLHttpRequest|WebSocket/, `${f} must not make network calls`);
+  }
+});
+
+test('--version prints the package version', async () => {
+  const { main } = require('../src/cli');
+  const out = [];
+  const log = console.log;
+  console.log = (s) => out.push(s);
+  try { assert.equal(await main(['--version']), 0); } finally { console.log = log; }
+  assert.deepEqual(out, [require('../package.json').version]);
+});
