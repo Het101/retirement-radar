@@ -1,0 +1,68 @@
+# End-of-support dates Retirement Radar checks against.
+# Every section links its source. Found a wrong or missing date? Open a PR with the source link.
+# Versions not listed here show up as "unknown", never as safe.
+updated: "2026-10-04"
+
+eks:
+  source: https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html
+  # After standard support ends, clusters move to extended support automatically and cost more.
+  # After extended support ends, AWS upgrades the control plane for you.
+  cost: Extended support adds $0.50 per cluster-hour, about $365 a month per cluster.
+  monthlyCost: 365
+  versions:
+    "1.23": { standard: "2023-10-11", extended: "2024-10-11" }
+    "1.24": { standard: "2024-01-31", extended: "2025-01-31" }
+    "1.25": { standard: "2024-05-01", extended: "2025-05-01" }
+    "1.26": { standard: "2024-06-11", extended: "2025-06-11" }
+    "1.27": { standard: "2024-07-24", extended: "2025-07-24" }
+    "1.28": { standard: "2024-11-26", extended: "2025-11-26" }
+    "1.29": { standard: "2025-03-23", extended: "2026-03-23" }
+    "1.30": { standard: "2025-07-23", extended: "2026-07-23" }
+    "1.31": { standard: "2025-11-26", extended: "2026-11-26" }
+    "1.32": { standard: "2026-03-23", extended: "2027-03-23" }
+    "1.33": { standard: "2026-07-29", extended: "2027-07-29" }
+
+rds:
+  source: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/extended-support.html
+  # After standard support ends, RDS enrols the database in Extended Support and bills it per vCPU-hour.
+  cost: RDS Extended Support is billed per vCPU-hour on top of the instance price.
+  engines:
+    postgres:
+      "11": { standard: "2024-02-29" }
+      "12": { standard: "2025-02-28" }
+      "13": { standard: "2026-02-28" }
+      "14": { standard: "2027-02-28" }
+      "15": { standard: "2028-02-29" }
+      "16": { standard: "2029-02-28" }
+    mysql:
+      "5.7": { standard: "2024-02-29" }
+      "8.0": { standard: "2026-07-31" }
+    aurora-postgresql:
+      "11": { standard: "2024-02-29" }
+      "12": { standard: "2025-02-28" }
+      "13": { standard: "2026-02-28" }
+      "14": { standard: "2027-02-28" }
+      "15": { standard: "2028-02-29" }
+      "16": { standard: "2029-02-28" }
+    aurora-mysql:
+      "5.7": { standard: "2024-10-31" }
+
+lambda:
+  source: https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
+  # Deprecated runtimes stop getting security patches; AWS then blocks creating and later updating functions.
+  runtimes:
+    nodejs14.x: "2023-12-04"
+    nodejs16.x: "2024-06-12"
+    nodejs18.x: "2025-09-01"
+    nodejs20.x: "2026-04-30"
+    python3.7: "2023-12-04"
+    python3.8: "2024-10-14"
+    python3.9: "2025-12-15"
+    ruby2.7: "2023-12-07"
+    ruby3.2: "2026-03-31"
+    java8: "2024-01-08"
+    go1.x: "2024-01-08"
+    provided: "2024-01-08"
+    dotnet6: "2024-12-20"
+    dotnet7: "2024-05-14"
+    dotnet8: "2026-11-10"
