@@ -1,0 +1,186 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege by default. A job that needs more asks for it explicitly.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # package.json says >=18, but 18 and 20 are past end of life. 20 stays
+        # in the matrix while people still run it; 22 and 24 are the LTS lines.
+        node: [20, 22, 24]
+    steps:
+      # First step on purpose, so it sees every step after it. Watches what
+      # this job talks to over the network: everything else here checks code
+      # before it runs, and this is the only thing that notices a dependency
+      # misbehaving while it runs. Audit mode records destinations without
+      # blocking; release.yml is the job that blocks.
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      # Actions are pinned to commit SHAs, not tags. A tag is mutable: whoever
+      # controls the action's repo can repoint it at new code, and it runs here
+      # with our token. The trailing comment is the human-readable version.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: node -v && npm -v
+      - run: npm ci
+      - run: npm test
+
+      # --help passes whether or not a scan works. This runs a real scan through
+      # the CLI entry point against a fake `aws` on PATH and reads what came
+      # out, so a broken region walk, a parsing change in the AWS CLI's JSON or
+      # a wrong exit code fails here instead of on someone's account.
+      - name: a real scan against a fake AWS CLI
+        run: |
+          set -e
+          mkdir -p "$RUNNER_TEMP/fakeaws"
+          cat > "$RUNNER_TEMP/fakeaws/aws" <<'SH'
+          #!/bin/sh
+          case "$1 $2" in
+            "sts get-caller-identity")   echo '{"Account":"123456789012"}' ;;
+            "eks list-clusters")         echo '{"clusters":["prod"]}' ;;
+            "eks describe-cluster")      echo '{"cluster":{"version":"1.27"}}' ;;
+            "rds describe-db-instances") echo '{"DBInstances":[{"DBInstanceIdentifier":"orders","Engine":"postgres","EngineVersion":"16.4"}]}' ;;
+            "rds describe-db-clusters")  echo '{"DBClusters":[]}' ;;
+            "lambda list-functions")     echo '{"Functions":[{"FunctionName":"thumbs","Runtime":"nodejs16.x"}]}' ;;
+            *) echo "unexpected aws call: $*" >&2; exit 1 ;;
+          esac
+          SH
+          chmod +x "$RUNNER_TEMP/fakeaws/aws"
+          export PATH="$RUNNER_TEMP/fakeaws:$PATH"
+
+          out="$(node src/cli.js scan --region eu-west-1 --json)"
+          echo "$out"
+          echo "$out" | node -e '
+            const r = JSON.parse(require("fs").readFileSync(0, "utf8"));
+            const by = Object.fromEntries(r.findings.map((f) => [f.resource, f.status]));
+            // Long-retired versions, so this does not start failing as dates pass.
+            const want = { prod: "retired", thumbs: "retired" };
+            for (const [k, v] of Object.entries(want)) {
+              if (by[k] !== v) { console.error(`::error::${k} should be ${v}, got ${by[k]}`); process.exit(1); }
+            }
+            // PostgreSQL 16 must be recognised; its status moves with time.
+            if (!by.orders || by.orders === "unknown") { console.error("::error::postgres 16 was not recognised"); process.exit(1); }
+            if (r.warnings.length) { console.error("::error::unexpected warnings: " + r.warnings.join("; ")); process.exit(1); }
+          '
+
+          # --fail-on is what CI users depend on: it must exit 1, not 0 or 2.
+          set +e
+          node src/cli.js scan --region eu-west-1 --fail-on retired > /dev/null
+          code=$?
+          set -e
+          [ "$code" -eq 1 ] || { echo "::error::--fail-on retired exited $code, expected 1"; exit 1; }
+          echo "scan, --json and --fail-on behave"
+
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      # Static analysis for the workflows themselves. CI is the most privileged
+      # code in the repo and the part nothing else reviews. zizmor catches
+      # template injection, tokens left in .git/config, cache poisoning and
+      # unpinned actions.
+      - name: audit the workflows
+        run: pipx run zizmor==1.30.1 --persona=regular .github/
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # The pre-commit hook can be bypassed with --no-verify. This cannot.
+      # This tool's users paste output from their own AWS accounts into issues
+      # and examples, so the shapes that matter are AWS credentials.
+      - name: scan the tree for committed secrets
+        run: |
+          set -e
+          if git grep -nE '(A3T[A-Z0-9]|AKIA|ASIA)[A-Z0-9]{16}' -- . ':!package-lock.json'; then
+            echo "::error::an AWS access key id is present in the tree"
+            exit 1
+          fi
+          if git grep -niE 'aws_secret_access_key[[:space:]]*[=:][[:space:]]*[A-Za-z0-9/+]{40}' -- . ':!package-lock.json'; then
+            echo "::error::an AWS secret access key is present in the tree"
+            exit 1
+          fi
+          if git grep -nE 'npm_[A-Za-z0-9]{36}' -- . ':!package-lock.json'; then
+            echo "::error::an npm token is present in the tree"
+            exit 1
+          fi
+          if git grep -nE '_authToken[[:space:]]*=[[:space:]]*[^$][^[:space:]]{8,}' -- . ':!package-lock.json'; then
+            echo "::error::an _authToken value is present in the tree"
+            exit 1
+          fi
+          echo "no secrets found in the tree"
+
+      - name: commit messages are conventional and unattributed
+        # Through env, never interpolated into the script body. A ${{ }} inside
+        # run is substituted before the shell sees it, so anything attacker-
+        # controlled becomes shell code.
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -e
+          base="$BASE_SHA"
+          if [ -z "$base" ]; then base="HEAD~1"; fi
+          for sha in $(git log --no-merges --format='%H' "$base..HEAD"); do
+            git log -1 --format='%B' "$sha" > /tmp/msg
+            .githooks/commit-msg /tmp/msg
+          done
+          echo "commit messages ok"
+
+      - name: commits must be signed
+        # main rejects unsigned commits, but the rejection arrives at merge time
+        # with no explanation. The usual cause is a rebase that was not told to
+        # sign, including GitHub's own "Update branch" button.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -e
+          if [ -z "$PR" ]; then
+            echo "not a pull request; nothing to check"
+            exit 0
+          fi
+          unsigned=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR/commits" \
+            --jq '.[] | select(.commit.verification.verified == false) | .sha[0:8] + "  " + (.commit.message | split("\n")[0])')
+          if [ -n "$unsigned" ]; then
+            echo "::error::unsigned commits in this pull request"
+            echo "$unsigned"
+            echo ""
+            echo "Sign them with:"
+            echo "  git rebase --exec 'git commit --amend --no-edit -S' origin/main"
+            echo "  git push --force-with-lease"
+            echo ""
+            echo "Do not use GitHub's 'Update branch' button: it rebases on the"
+            echo "server and strips signatures. Rebase locally instead."
+            exit 1
+          fi
+          echo "all commits signed"
+
+      - name: dependency audit
+        run: npm audit --audit-level=high
