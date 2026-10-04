@@ -1,0 +1,14 @@
+{
+  "name": "retirement-radar",
+  "version": "0.1.0",
+  "description": "Read-only scan of your AWS account for EKS, RDS and Lambda versions near end of support.",
+  "bin": { "retirement-radar": "src/cli.js" },
+  "files": ["src", "retirements.yaml"],
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=18" },
+  "keywords": ["aws", "eks", "rds", "lambda", "end-of-life", "deprecation", "devops"],
+  "repository": "github:Het101/retirement-radar",
+  "homepage": "https://hetops.dev",
+  "license": "MIT",
+  "dependencies": { "yaml": "^2.5.0" }
+}
