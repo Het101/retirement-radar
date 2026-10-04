@@ -1,0 +1,32 @@
+name: Feature request
+description: Something Retirement Radar should check or do and doesn't.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What can't you see today?
+      description: The end-of-life or cost surprise you want caught, not the feature you have in mind.
+    validations: { required: true }
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Another AWS service (ElastiCache, OpenSearch, MSK, ...)
+        - Azure
+        - GCP
+        - Output or CI integration
+        - Something else
+    validations: { required: true }
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What are you doing instead?
+      description: A script, a spreadsheet, a calendar reminder — all useful to know.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Does it fit?
+      options:
+        - label: It can be done with read-only access

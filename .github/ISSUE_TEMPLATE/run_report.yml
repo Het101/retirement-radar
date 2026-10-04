@@ -1,0 +1,41 @@
+name: I ran it — here is what it found
+description: Report a scan of your own account. A clean result is just as useful as a messy one.
+labels: [run report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Every report like this makes the scanner better.** It shows which versions people
+        actually run, which ones come back "unknown", and which output confused someone.
+
+        **Redact freely.** Counts and statuses are enough; resource names and account ids
+        are not needed.
+  - type: dropdown
+    id: outcome
+    attributes:
+      label: How did it go?
+      options:
+        - It found nothing to worry about
+        - It found real problems I didn't know about
+        - It found things I already knew about
+        - Some versions came back "unknown"
+        - The output confused me
+        - It failed or refused, and I couldn't tell why
+    validations: { required: true }
+  - type: textarea
+    id: summary
+    attributes:
+      label: The summary line
+      description: The "N resources scanned:" line, plus any "unknown" versions.
+      render: text
+  - type: textarea
+    id: surprise
+    attributes:
+      label: What surprised you?
+      description: A status that looked wrong, a note that was unclear, a missing service you expected it to check.
+    validations: { required: true }
+  - type: input
+    id: scale
+    attributes:
+      label: Roughly how big is the account?
+      placeholder: "3 regions, ~10 clusters, ~40 databases, ~300 functions"
