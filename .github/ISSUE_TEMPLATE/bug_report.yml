@@ -1,0 +1,54 @@
+name: Bug report
+description: The scanner crashed, refused, or reported something it shouldn't have.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Redact freely.** Replace account ids, ARNs and resource names with placeholders.
+        Never paste AWS keys or session tokens, even expired ones.
+
+        A wrong end-of-support **date** has its own form, which is quicker to act on.
+        Security problems do not belong here — see [SECURITY.md](../blob/main/SECURITY.md).
+  - type: input
+    id: command
+    attributes:
+      label: What did you run?
+      placeholder: npx retirement-radar scan --region eu-west-1 --profile prod
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations: { required: true }
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Output or the error, redacted. `--json` output is easiest to act on.
+      render: shell
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Retirement Radar version
+      placeholder: npx retirement-radar --version, or 0.1.1
+    validations: { required: true }
+  - type: input
+    id: env
+    attributes:
+      label: Node and AWS CLI versions
+      placeholder: "node -v → v22.12.0, aws --version → aws-cli/2.17.0"
+    validations: { required: true }
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [macOS, Linux, Windows, CI runner]
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Before submitting
+      options:
+        - label: This contains no AWS keys, session tokens or unredacted account ids
+          required: true

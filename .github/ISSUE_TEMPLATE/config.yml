@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Het101/retirement-radar/security/advisories/new
+    about: Report privately. Never in a public issue — see SECURITY.md.
+  - name: Question or idea
+    url: https://github.com/Het101/retirement-radar/discussions
+    about: For anything that is not a bug, a wrong date or a concrete feature request.

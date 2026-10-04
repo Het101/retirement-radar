@@ -1,0 +1,49 @@
+name: A date is wrong or missing
+description: retirements.yaml has a wrong end-of-support date, or a version it should know about.
+title: "dates: "
+labels: [dates]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This is the most valuable report this project gets.** The scanner is only as
+        good as `retirements.yaml`, and AWS changes its calendars without much notice.
+
+        A source link is required. Dates without one can't be merged, because a wrong
+        date is worse than a missing one: it tells someone they're safe when they're not.
+  - type: dropdown
+    id: service
+    attributes:
+      label: Service
+      options: [EKS, RDS / Aurora, Lambda, Something not covered yet]
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Version or runtime
+      placeholder: "1.32, postgres 14, aurora-mysql 5.7, nodejs20.x"
+    validations: { required: true }
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What's wrong?
+      options:
+        - A date in the file is wrong
+        - The version is missing from the file
+        - AWS moved or extended a date
+        - The scan shows "unknown" for something AWS documents
+    validations: { required: true }
+  - type: input
+    id: correct
+    attributes:
+      label: The correct date(s)
+      description: For EKS give both the standard and the extended support end.
+      placeholder: "standard 2026-03-23, extended 2027-03-23"
+    validations: { required: true }
+  - type: input
+    id: source
+    attributes:
+      label: AWS source link
+      description: The AWS documentation page or announcement that states the date.
+      placeholder: https://docs.aws.amazon.com/...
+    validations: { required: true }
