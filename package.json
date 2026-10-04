@@ -25,7 +25,10 @@
     "deprecation",
     "devops"
   ],
-  "repository": "github:Het101/retirement-radar",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Het101/retirement-radar.git"
+  },
   "homepage": "https://hetops.dev",
   "license": "MIT",
   "dependencies": {
