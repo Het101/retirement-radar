@@ -3,7 +3,7 @@
 Find what in your AWS account is about to lose support before it starts costing you money or gets force-upgraded.
 
 ```
-$ npx github:Het101/retirement-radar scan
+$ npx retirement-radar scan
 Scanning AWS account 123456789012 (read-only)...
 
 STATUS    SERVICE  REGION     RESOURCE     VERSION         DATE                   WHAT IT MEANS
@@ -31,7 +31,7 @@ Dates live in [`retirements.yaml`](retirements.yaml), each section with its AWS 
 You need Node 18+ and the [AWS CLI v2](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html), signed in (`aws configure`, `aws sso login`, or an assumed role). Retirement Radar uses your AWS CLI, so profiles, SSO and roles just work.
 
 ```bash
-npx github:Het101/retirement-radar scan
+npx retirement-radar scan
 ```
 
 | Option | |
@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with: { role-to-assume: arn:aws:iam::123456789012:role/retirement-radar, aws-region: us-east-1 }
-      - run: npx github:Het101/retirement-radar scan --fail-on soon
+      - run: npx retirement-radar scan --fail-on soon
 ```
 
 ## Contributing dates
