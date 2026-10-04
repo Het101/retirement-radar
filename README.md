@@ -1,20 +1,22 @@
+<p align="center"><img src="https://raw.githubusercontent.com/Het101/retirement-radar/main/docs/banner.png" alt="Retirement Radar: find AWS resources before end of support costs you money" width="100%"></p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/retirement-radar"><img src="https://img.shields.io/npm/v/retirement-radar?color=E5484D&label=npm" alt="npm version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-3f4756" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/AWS-read--only-3f4756" alt="Read-only">
+</p>
+
 # Retirement Radar
 
 Find what in your AWS account is about to lose support before it starts costing you money or gets force-upgraded.
 
+```bash
+npx retirement-radar scan
 ```
-$ npx retirement-radar scan
-Scanning AWS account 123456789012 (read-only)...
 
-STATUS    SERVICE  REGION     RESOURCE     VERSION         DATE                   WHAT IT MEANS
-RETIRED   Lambda   us-east-1  thumbnailer  nodejs18.x      2025-09-01 (398d ago)  Runtime deprecated: no security patches
-EXTENDED  RDS      us-east-1  orders-db    postgres 13.12  2026-02-28 (218d ago)  Past standard support. RDS Extended Support is billed per vCPU-hour...
-EXTENDED  EKS      eu-west-1  prod         1.31            2026-11-26 (in 53d)    Paid extended support until this date, then AWS force-upgrades...
-SOON      Lambda   us-east-1  api          dotnet8         2026-11-10 (in 37d)    Runtime deprecation
+<img src="https://raw.githubusercontent.com/Het101/retirement-radar/main/docs/scan-output.png" alt="Example output: a table of resources with status RETIRED, EXTENDED, SOON or UPCOMING, the end-of-support date and what it means, plus the monthly EKS extended support cost" width="100%">
 
-14 resources scanned: 1 retired, 2 extended, 1 soon, 10 ok.
-EKS extended support is costing about $365 a month.
-```
+<sub>Example output with sample data.</sub>
 
 ## What it checks
 
