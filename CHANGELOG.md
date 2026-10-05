@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-05
+
 ### Added
 
 - `--version` flag.
@@ -32,6 +34,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - `retirements.yaml`: end-of-support dates with AWS source links.
 - Table and `--json` output, an EKS extended-support cost estimate, and `--fail-on <level>` for CI.
 
-[Unreleased]: https://github.com/Het101/retirement-radar/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Het101/retirement-radar/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Het101/retirement-radar/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Het101/retirement-radar/releases/tag/v0.1.1
 [0.1.0]: https://github.com/Het101/retirement-radar/commits/v0.1.1
