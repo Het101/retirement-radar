@@ -6,14 +6,27 @@ const { scan } = require('../src/cli');
 const db = loadRetirements();
 const NOW = Date.parse('2026-10-04T00:00:00Z');
 
-test('retirements.yaml: every date parses and every section has a source', () => {
-  for (const s of ['eks', 'rds', 'lambda']) assert.match(db[s].source, /^https:\/\//);
-  const dates = [
-    ...Object.values(db.eks.versions).flatMap((v) => [v.standard, v.extended]),
-    ...Object.values(db.rds.engines).flatMap((e) => Object.values(e).map((v) => v.standard)),
-    ...Object.values(db.lambda.runtimes),
-  ];
-  for (const d of dates) assert.ok(/^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)), d);
+test('retirements.yaml: every date parses, every section has a source, extended never precedes standard', () => {
+  const sections = ['eks', 'rds', 'elasticache', 'opensearch', 'msk', 'lambda'];
+  for (const s of sections) assert.match(db[s].source, /^https:\/\//, `${s} needs a source`);
+  // Walk every entry: a string is a single date, an object may have standard/extended, null/{} = no date yet.
+  const entries = [];
+  const walk = (node, at) => {
+    if (typeof node === 'string' || node === null) return entries.push([at, node === null ? {} : { standard: node }]);
+    if (node.standard !== undefined || node.extended !== undefined || Object.keys(node).length === 0) return entries.push([at, node]);
+    for (const [k, v] of Object.entries(node)) walk(v, `${at}.${k}`);
+  };
+  walk(db.eks.versions, 'eks'); walk(db.rds.engines, 'rds'); walk(db.elasticache.engines, 'elasticache');
+  walk(db.opensearch.versions, 'opensearch'); walk(db.msk.versions, 'msk'); walk(db.lambda.runtimes, 'lambda');
+  assert.ok(entries.length > 150, `only ${entries.length} entries`);
+  const ok = (d) => /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d));
+  for (const [at, e] of entries) {
+    if (e.standard) assert.ok(ok(e.standard), `${at} standard ${e.standard}`);
+    if (e.extended) {
+      assert.ok(ok(e.extended), `${at} extended ${e.extended}`);
+      assert.ok(e.standard && e.extended > e.standard, `${at}: extended must come after standard`);
+    }
+  }
 });
 
 test('majorVersion handles postgres, mysql and aurora version strings', () => {
@@ -100,4 +113,75 @@ test('--version prints the package version', async () => {
   console.log = (s) => out.push(s);
   try { assert.equal(await main(['--version']), 0); } finally { console.log = log; }
   assert.deepEqual(out, [require('../package.json').version]);
+});
+
+test('evaluate: ElastiCache, OpenSearch, MSK and "no end announced"', () => {
+  const e = (item) => evaluate(item, db, NOW);
+  // Redis 5 left standard support 2026-01-31: paid Extended Support until 2029-01-31.
+  assert.equal(e({ service: 'ElastiCache', engine: 'redis', version: '5.0.6' }).status, 'extended');
+  assert.equal(e({ service: 'ElastiCache', engine: 'redis', version: '5.0.6' }).date, '2029-01-31');
+  assert.equal(e({ service: 'ElastiCache', engine: 'redis', version: '6.2.6' }).status, 'upcoming');
+  assert.equal(e({ service: 'ElastiCache', engine: 'valkey', version: '8.0' }).status, 'ok');
+  assert.equal(e({ service: 'ElastiCache', engine: 'valkey', version: '8.0' }).note, 'No end of support announced');
+  assert.equal(e({ service: 'ElastiCache', engine: 'memcached', version: '1.6.22' }).status, 'unknown');
+
+  assert.equal(e({ service: 'OpenSearch', version: 'Elasticsearch_7.4' }).status, 'extended');
+  assert.equal(e({ service: 'OpenSearch', version: 'Elasticsearch_7.10' }).status, 'ok');
+  assert.equal(e({ service: 'OpenSearch', version: 'OpenSearch_3.1' }).status, 'ok');
+
+  // MSK has no paid extension: past the date it is simply retired.
+  assert.equal(e({ service: 'MSK', version: '3.6.0' }).status, 'retired');
+  assert.equal(e({ service: 'MSK', version: '3.7.x.kraft' }).status, 'retired', '.kraft suffix is normalised');
+  assert.equal(e({ service: 'MSK', version: '3.9.x' }).status, 'ok');
+
+  // RDS now knows the end of Extended Support, and Aurora MySQL 8.0 runs longer than RDS MySQL 8.0.
+  assert.equal(e({ service: 'RDS', engine: 'mysql', version: '8.0.46' }).status, 'extended');
+  assert.equal(e({ service: 'RDS', engine: 'aurora-mysql', version: '8.0.mysql_aurora.3.10.0' }).status, 'ok');
+  assert.match(e({ service: 'RDS', engine: 'aurora-mysql', version: '8.0.mysql_aurora.3.10.0' }).source, /AuroraMySQL/);
+  assert.equal(e({ service: 'Lambda', version: 'python3.10' }).status, 'soon');
+  assert.equal(e({ service: 'Lambda', version: 'nodejs26.x' }).status, 'ok');
+});
+
+test('scan: ElastiCache groups are reported once, serverless caches and OpenSearch batches included', async () => {
+  const calls = [];
+  const fake = {
+    'eks list-clusters': { clusters: [] },
+    'rds describe-db-instances': { DBInstances: [] },
+    'rds describe-db-clusters': { DBClusters: [] },
+    'lambda list-functions': { Functions: [] },
+    'elasticache describe-cache-clusters': { CacheClusters: [
+      { CacheClusterId: 'sessions-001', ReplicationGroupId: 'sessions', Engine: 'redis', EngineVersion: '5.0.6' },
+      { CacheClusterId: 'sessions-002', ReplicationGroupId: 'sessions', Engine: 'redis', EngineVersion: '5.0.6' },
+      { CacheClusterId: 'memo', Engine: 'memcached', EngineVersion: '1.6.22' },
+    ] },
+    'elasticache describe-serverless-caches': { ServerlessCaches: [{ ServerlessCacheName: 'edge', Engine: 'valkey', MajorEngineVersion: '8', FullEngineVersion: '8.0' }] },
+    'opensearch list-domain-names': { DomainNames: ['a', 'b', 'c', 'd', 'e', 'f'].map((DomainName) => ({ DomainName })) },
+    'kafka list-clusters-v2': { ClusterInfoList: [
+      { ClusterName: 'events', Provisioned: { CurrentBrokerSoftwareInfo: { KafkaVersion: '2.8.1' } } },
+      { ClusterName: 'serverless-x', ClusterType: 'SERVERLESS' },
+    ] },
+  };
+  const aws = async (args) => {
+    calls.push(args.join(' '));
+    if (args[1] === 'describe-domains') {
+      const names = args.slice(3);
+      return { DomainStatusList: names.map((n) => ({ DomainName: n, EngineVersion: 'Elasticsearch_6.8' })) };
+    }
+    return fake[args.slice(0, 2).join(' ')];
+  };
+  const warnings = [];
+  const f = await scan({ regions: ['eu-west-1'], aws, db, now: NOW, warn: (w) => warnings.push(w) });
+  assert.deepEqual(warnings, []);
+  const by = (svc) => f.filter((x) => x.service === svc).map((x) => `${x.resource}:${x.status}`).sort();
+  assert.deepEqual(by('ElastiCache'), ['edge:ok', 'memo:unknown', 'sessions:extended']);
+  assert.equal(by('OpenSearch').length, 6, 'all six domains, across two describe-domains calls');
+  assert.equal(calls.filter((c) => c.startsWith('opensearch describe-domains')).length, 2);
+  assert.deepEqual(by('MSK'), ['events:retired']);
+});
+
+test('scan: --services limits which APIs are called', async () => {
+  const calls = [];
+  const aws = async (args) => { calls.push(args[0]); return { Functions: [] }; };
+  await scan({ regions: ['us-east-1'], aws, db, now: NOW, services: ['lambda'] });
+  assert.deepEqual([...new Set(calls)], ['lambda']);
 });

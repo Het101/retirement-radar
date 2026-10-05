@@ -6,6 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **ElastiCache** (Redis OSS and Valkey; clusters, replication groups and serverless caches), **OpenSearch** (Elasticsearch and OpenSearch domains) and **MSK** (provisioned Kafka clusters).
+- `--services` to scan only some services, with fewer permissions.
+- RDS and Aurora now know the end of Extended Support, so a database past it shows as `retired`.
+- Versions AWS lists with no end date yet show as `ok` ("No end of support announced") rather than `unknown`.
+
+### Changed
+
+- `retirements.yaml` re-checked against the AWS pages on 2026-10-05: EKS 1.34–1.37, PostgreSQL 17–18, MySQL 8.4, Aurora MySQL 3 (its 8.0 runs to 30 April 2028, longer than RDS MySQL 8.0), and every current Lambda runtime with its deprecation date.
+
 ## [0.2.0] - 2026-10-05
 
 ### Added
