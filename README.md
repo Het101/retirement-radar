@@ -24,6 +24,9 @@ npx retirement-radar scan
 |---|---|---|
 | EKS | Kubernetes version per cluster | After standard support, clusters move to extended support at 6x the control-plane price, then get force-upgraded |
 | RDS / Aurora | Engine major version (PostgreSQL, MySQL, Aurora) | After standard support, RDS bills Extended Support per vCPU-hour automatically |
+| ElastiCache | Redis OSS / Valkey version per cluster, replication group and serverless cache | Redis OSS 4 and 5 are already on paid Extended Support; 6 follows on 31 January 2027 |
+| OpenSearch | Elasticsearch / OpenSearch version per domain | From 7 November 2026, Extended Support for older versions costs as much as the instances themselves |
+| MSK | Kafka version per provisioned cluster | No paid extension: past the date, MSK can auto-upgrade the cluster at any time |
 | Lambda | Function runtime | Deprecated runtimes get no security patches, then can't be created or updated |
 
 Dates live in [`retirements.yaml`](retirements.yaml), each section with its AWS source link. A version that isn't listed shows as `unknown`, never as fine.
@@ -39,6 +42,7 @@ npx retirement-radar scan
 | Option | |
 |---|---|
 | `--region eu-west-1,us-east-1` | Only these regions (default: every enabled region) |
+| `--services rds,elasticache` | Only these services: `eks`, `rds`, `elasticache`, `opensearch`, `msk`, `lambda` (default: all) |
 | `--profile prod` | AWS CLI profile |
 | `--json` | Machine-readable output |
 | `--all` | Also list resources with more than a year left |
@@ -47,7 +51,7 @@ npx retirement-radar scan
 
 ## Safe by design
 
-- **Read-only.** It only calls `sts get-caller-identity`, `ec2 describe-regions`, `eks list-clusters` / `describe-cluster`, `rds describe-db-instances` / `describe-db-clusters` and `lambda list-functions`.
+- **Read-only.** It only calls `sts get-caller-identity`, `ec2 describe-regions`, `eks list-clusters` / `describe-cluster`, `rds describe-db-instances` / `describe-db-clusters`, `elasticache describe-cache-clusters` / `describe-serverless-caches`, `opensearch list-domain-names` / `describe-domains`, `kafka list-clusters-v2` and `lambda list-functions`.
 - **Local.** Nothing is sent anywhere; no telemetry.
 - A region or service you can't read becomes a warning, not a failed scan.
 
@@ -59,7 +63,10 @@ Minimal IAM policy:
   "Statement": [{
     "Effect": "Allow",
     "Action": ["ec2:DescribeRegions", "eks:ListClusters", "eks:DescribeCluster",
-               "rds:DescribeDBInstances", "rds:DescribeDBClusters", "lambda:ListFunctions"],
+               "rds:DescribeDBInstances", "rds:DescribeDBClusters",
+               "elasticache:DescribeCacheClusters", "elasticache:DescribeServerlessCaches",
+               "es:ListDomainNames", "es:DescribeDomains", "kafka:ListClustersV2",
+               "lambda:ListFunctions"],
     "Resource": "*"
   }]
 }

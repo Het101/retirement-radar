@@ -1,7 +1,7 @@
 {
   "name": "retirement-radar",
   "version": "0.2.0",
-  "description": "Read-only scan of your AWS account for EKS, RDS and Lambda versions near end of support.",
+  "description": "Read-only scan of your AWS account for EKS, RDS, ElastiCache, OpenSearch, MSK and Lambda versions near end of support.",
   "bin": {
     "retirement-radar": "src/cli.js"
   },
@@ -19,12 +19,17 @@
   },
   "keywords": [
     "aws",
-    "eks",
-    "rds",
-    "lambda",
-    "end-of-life",
     "deprecation",
-    "devops"
+    "devops",
+    "eks",
+    "elasticache",
+    "end-of-life",
+    "kafka",
+    "lambda",
+    "msk",
+    "opensearch",
+    "rds",
+    "redis"
   ],
   "repository": {
     "type": "git",

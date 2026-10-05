@@ -58,6 +58,11 @@ jobs:
             "rds describe-db-instances") echo '{"DBInstances":[{"DBInstanceIdentifier":"orders","Engine":"postgres","EngineVersion":"16.4"}]}' ;;
             "rds describe-db-clusters")  echo '{"DBClusters":[]}' ;;
             "lambda list-functions")     echo '{"Functions":[{"FunctionName":"thumbs","Runtime":"nodejs16.x"}]}' ;;
+            "elasticache describe-cache-clusters")    echo '{"CacheClusters":[{"CacheClusterId":"cache","Engine":"redis","EngineVersion":"4.0.10"}]}' ;;
+            "elasticache describe-serverless-caches") echo '{"ServerlessCaches":[]}' ;;
+            "opensearch list-domain-names")           echo '{"DomainNames":[{"DomainName":"logs"}]}' ;;
+            "opensearch describe-domains")            echo '{"DomainStatusList":[{"DomainName":"logs","EngineVersion":"Elasticsearch_7.10"}]}' ;;
+            "kafka list-clusters-v2")                 echo '{"ClusterInfoList":[{"ClusterName":"events","Provisioned":{"CurrentBrokerSoftwareInfo":{"KafkaVersion":"2.8.1"}}}]}' ;;
             *) echo "unexpected aws call: $*" >&2; exit 1 ;;
           esac
           SH
@@ -70,12 +75,14 @@ jobs:
             const r = JSON.parse(require("fs").readFileSync(0, "utf8"));
             const by = Object.fromEntries(r.findings.map((f) => [f.resource, f.status]));
             // Long-retired versions, so this does not start failing as dates pass.
-            const want = { prod: "retired", thumbs: "retired" };
+            const want = { prod: "retired", thumbs: "retired", events: "retired" };
             for (const [k, v] of Object.entries(want)) {
               if (by[k] !== v) { console.error(`::error::${k} should be ${v}, got ${by[k]}`); process.exit(1); }
             }
-            // PostgreSQL 16 must be recognised; its status moves with time.
-            if (!by.orders || by.orders === "unknown") { console.error("::error::postgres 16 was not recognised"); process.exit(1); }
+            // These must be recognised; their statuses move with time.
+            for (const k of ["orders", "cache", "logs"]) {
+              if (!by[k] || by[k] === "unknown") { console.error(`::error::${k} was not recognised`); process.exit(1); }
+            }
             if (r.warnings.length) { console.error("::error::unexpected warnings: " + r.warnings.join("; ")); process.exit(1); }
           '
 

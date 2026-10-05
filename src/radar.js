@@ -23,37 +23,75 @@ function majorVersion(engine, version) {
 const daysUntil = (date, now) => Math.ceil((Date.parse(date) - now) / DAY);
 const byDays = (days) => (days <= SOON_DAYS ? 'soon' : days <= UPCOMING_DAYS ? 'upcoming' : 'ok');
 
-// item: { service: 'EKS'|'RDS'|'Lambda', region, resource, version, engine? }
+// MSK reports "3.7.x.kraft"; the calendar lists "3.7.x".
+const mskVersion = (v) => String(v || '').replace(/\.kraft$/, '');
+
+// Per service: where its dates live, and what each status means for it in plain words.
+const SERVICES = {
+  EKS: {
+    lookup: (db, i) => db.eks.versions[i.version],
+    source: (db) => db.eks.source,
+    retired: () => 'Extended support ended; AWS force-upgrades the control plane',
+    extended: (db) => `Paid extended support until this date, then AWS force-upgrades. ${db.eks.cost}`,
+    upcoming: () => 'Standard support ends; extended support charges start',
+    monthlyCost: (db) => db.eks.monthlyCost,
+  },
+  RDS: {
+    lookup: (db, i) => (db.rds.engines[i.engine] || {})[majorVersion(i.engine, i.version)],
+    source: (db, i) => (db.rds.sources || {})[i.engine] || db.rds.source,
+    retired: () => 'RDS Extended Support has ended; RDS upgrades the database',
+    extended: (db) => `Paid Extended Support until this date. ${db.rds.cost}`,
+    upcoming: () => 'Standard support ends; Extended Support billing starts',
+  },
+  ElastiCache: {
+    lookup: (db, i) => (db.elasticache.engines[i.engine] || {})[String(i.version || '').split('.')[0]],
+    source: (db) => db.elasticache.source,
+    retired: () => 'Extended Support has ended; the version is end of life',
+    extended: (db) => `Paid Extended Support until this date. ${db.elasticache.cost}`,
+    upcoming: () => 'Standard support ends; Extended Support charges start',
+  },
+  OpenSearch: {
+    lookup: (db, i) => db.opensearch.versions[i.version],
+    source: (db) => db.opensearch.source,
+    retired: () => 'Extended Support has ended; upgrade required',
+    extended: (db) => `Paid Extended Support until this date. ${db.opensearch.cost}`,
+    upcoming: () => 'Standard support ends; Extended Support charges start',
+  },
+  MSK: {
+    lookup: (db, i) => db.msk.versions[mskVersion(i.version)],
+    source: (db) => db.msk.source,
+    retired: () => 'Past end of support: MSK can auto-upgrade the cluster at any time',
+    upcoming: () => 'End of support; MSK auto-upgrades the cluster after this date',
+  },
+  Lambda: {
+    lookup: (db, i) => db.lambda.runtimes[i.version],
+    source: (db) => db.lambda.source,
+    retired: () => 'Runtime deprecated: no security patches',
+    upcoming: () => 'Runtime deprecation',
+  },
+};
+
+// item: { service, region, resource, version, engine? }
 function evaluate(item, db, now = Date.now()) {
+  const svc = SERVICES[item.service];
   const f = { ...item, status: 'unknown', date: null, days: null, note: 'Version not in retirements.yaml', source: null };
-  if (item.service === 'EKS') {
-    const v = db.eks.versions[item.version];
-    f.source = db.eks.source;
-    if (!v) return f;
-    const std = daysUntil(v.standard, now);
-    const ext = daysUntil(v.extended, now);
-    if (ext < 0) return { ...f, status: 'retired', date: v.extended, days: ext, note: 'Extended support ended; AWS force-upgrades the control plane' };
-    if (std < 0) return { ...f, status: 'extended', date: v.extended, days: ext, note: `Paid extended support until this date, then AWS force-upgrades. ${db.eks.cost}`, monthlyCost: db.eks.monthlyCost };
-    return { ...f, status: byDays(std), date: v.standard, days: std, note: 'Standard support ends; extended support charges start' };
+  if (!svc || !db[item.service.toLowerCase()]) return f;
+  f.source = svc.source(db, item);
+  const raw = svc.lookup(db, item);
+  if (raw === undefined) return f;                                  // not listed: unknown, never fine
+  const v = typeof raw === 'string' ? { standard: raw } : raw || {};
+  if (!v.standard) return { ...f, status: 'ok', note: 'No end of support announced' };
+
+  const std = daysUntil(v.standard, now);
+  const ext = v.extended ? daysUntil(v.extended, now) : null;
+  if (ext !== null && ext < 0) return { ...f, status: 'retired', date: v.extended, days: ext, note: svc.retired(db) };
+  if (std < 0) {
+    if (ext === null || !svc.extended) return { ...f, status: 'retired', date: v.standard, days: std, note: svc.retired(db) };
+    const out = { ...f, status: 'extended', date: v.extended, days: ext, note: svc.extended(db) };
+    if (svc.monthlyCost) out.monthlyCost = svc.monthlyCost(db);
+    return out;
   }
-  if (item.service === 'RDS') {
-    const major = majorVersion(item.engine, item.version);
-    const v = (db.rds.engines[item.engine] || {})[major];
-    f.source = db.rds.source;
-    if (!v) return f;
-    const std = daysUntil(v.standard, now);
-    if (std < 0) return { ...f, status: 'extended', date: v.standard, days: std, note: `Past standard support. ${db.rds.cost}` };
-    return { ...f, status: byDays(std), date: v.standard, days: std, note: 'Standard support ends; Extended Support billing starts' };
-  }
-  if (item.service === 'Lambda') {
-    const date = db.lambda.runtimes[item.version];
-    f.source = db.lambda.source;
-    if (!date) return f;
-    const d = daysUntil(date, now);
-    if (d < 0) return { ...f, status: 'retired', date, days: d, note: 'Runtime deprecated: no security patches' };
-    return { ...f, status: byDays(d), date, days: d, note: 'Runtime deprecation' };
-  }
-  return f;
+  return { ...f, status: byDays(std), date: v.standard, days: std, note: svc.upcoming(db) };
 }
 
 const sortFindings = (list) => [...list].sort((a, b) =>
@@ -65,4 +103,4 @@ const failsAt = (findings, level) => {
   return max >= 0 && findings.some((f) => f.status !== 'unknown' && SEVERITY.indexOf(f.status) <= max);
 };
 
-module.exports = { SEVERITY, loadRetirements, majorVersion, evaluate, sortFindings, failsAt };
+module.exports = { SEVERITY, SERVICES, loadRetirements, majorVersion, mskVersion, evaluate, sortFindings, failsAt };
