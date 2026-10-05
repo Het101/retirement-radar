@@ -1,6 +1,6 @@
 {
   "name": "retirement-radar",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Read-only scan of your AWS account for EKS, RDS, ElastiCache, OpenSearch, MSK and Lambda versions near end of support.",
   "bin": {
     "retirement-radar": "src/cli.js"
