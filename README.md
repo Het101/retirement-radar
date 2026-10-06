@@ -91,8 +91,12 @@ jobs:
 
 Found a wrong or missing date? Edit `retirements.yaml`, include the AWS source link in the PR, and run `npm test`.
 
+## Hosted: Radar Cloud
+
+Rather not run it yourself? [Radar Cloud](https://radar.hetops.dev) runs this same scanner for you: connect an account by deploying one read-only role (the same list and describe actions as above, trusted only with your private external id), and it scans every region daily and alerts you by email or Slack when something new or worse turns up, with the monthly cost. Free for one account.
+
 ## Roadmap
 
-Azure and GCP retirements, ElastiCache / OpenSearch / MSK versions, hosted weekly scans with alerts, cost per finding. Part of [HetOps](https://hetops.dev).
+Azure and GCP retirements, cost per finding for RDS, ElastiCache and OpenSearch. Part of [HetOps](https://hetops.dev).
 
 MIT licensed.
