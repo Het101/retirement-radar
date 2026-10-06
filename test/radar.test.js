@@ -185,3 +185,14 @@ test('scan: --services limits which APIs are called', async () => {
   await scan({ regions: ['us-east-1'], aws, db, now: NOW, services: ['lambda'] });
   assert.deepEqual([...new Set(calls)], ['lambda']);
 });
+
+test('scan: a service the account is not subscribed to is skipped, not reported', async () => {
+  const warnings = [];
+  const aws = async (args) => {
+    if (args[0] === 'kafka') throw new Error('aws: [ERROR]: An error occurred (SubscriptionRequiredException) when calling the ListClustersV2 operation: The AWS Access Key Id needs a subscription for the service');
+    if (args[0] === 'rds') throw new Error('AccessDenied');
+    return {};
+  };
+  await scan({ regions: ['eu-west-1'], aws, db, now: NOW, warn: (w) => warnings.push(w) });
+  assert.deepEqual(warnings, ['eu-west-1 RDS: AccessDenied'], 'real failures still surface');
+});
