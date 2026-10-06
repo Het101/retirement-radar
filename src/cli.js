@@ -51,11 +51,18 @@ const DB_ENGINE = /^(aurora|mysql|postgres|mariadb|oracle|sqlserver)/;
 
 const ALL_SERVICES = ['eks', 'rds', 'elasticache', 'opensearch', 'msk', 'lambda'];
 
+const NOT_ENABLED = /SubscriptionRequiredException|OptInRequired/;
+
 async function collectRegion(region, aws, warn, services = ALL_SERVICES) {
   const items = [];
   const step = async (label, fn) => {
     if (!services.includes(label.toLowerCase())) return;
-    try { await fn(); } catch (e) { warn(`${region} ${label}: ${e.message}`); }
+    try { await fn(); } catch (e) {
+      // A service the account has never been subscribed to (common for MSK on new accounts)
+      // cannot hold any resources, so there is nothing to miss: skip it quietly.
+      if (NOT_ENABLED.test(e.message)) return;
+      warn(`${region} ${label}: ${e.message}`);
+    }
   };
   await Promise.all([
     step('EKS', async () => {
