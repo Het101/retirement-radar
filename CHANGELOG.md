@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-06
+
+### Fixed
+
+- A service the account is not subscribed to (common for MSK on new AWS accounts: `SubscriptionRequiredException`) is skipped instead of being reported as a failed check in every region. Such an account cannot hold resources of that service. Other errors are still reported.
+
 ## [0.4.0] - 2026-10-06
 
 ### Added
@@ -54,7 +60,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - `retirements.yaml`: end-of-support dates with AWS source links.
 - Table and `--json` output, an EKS extended-support cost estimate, and `--fail-on <level>` for CI.
 
-[Unreleased]: https://github.com/Het101/retirement-radar/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/Het101/retirement-radar/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/Het101/retirement-radar/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/Het101/retirement-radar/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/Het101/retirement-radar/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Het101/retirement-radar/compare/v0.1.1...v0.2.0
