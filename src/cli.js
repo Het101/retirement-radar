@@ -28,10 +28,18 @@ function parseArgs(argv) {
   return o;
 }
 
-function awsRunner(profile) {
+// Runs the AWS CLI. With `credentials` (e.g. from sts assume-role) the call uses exactly those
+// and ignores any profile in the environment, which is how a hosted scanner reads one account.
+function awsRunner(profile, { credentials, execFileImpl = execFile } = {}) {
+  let env;
+  if (credentials) {
+    env = { ...process.env, AWS_ACCESS_KEY_ID: credentials.accessKeyId, AWS_SECRET_ACCESS_KEY: credentials.secretAccessKey };
+    if (credentials.sessionToken) env.AWS_SESSION_TOKEN = credentials.sessionToken; else delete env.AWS_SESSION_TOKEN;
+    delete env.AWS_PROFILE; delete env.AWS_DEFAULT_PROFILE;
+  }
   return (args, region) => new Promise((resolve, reject) => {
-    const full = [...args, '--output', 'json', ...(region ? ['--region', region] : []), ...(profile ? ['--profile', profile] : [])];
-    execFile('aws', full, { maxBuffer: 64 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
+    const full = [...args, '--output', 'json', ...(region ? ['--region', region] : []), ...(profile && !credentials ? ['--profile', profile] : [])];
+    execFileImpl('aws', full, { maxBuffer: 64 * 1024 * 1024, windowsHide: true, ...(env ? { env } : {}) }, (err, stdout, stderr) => {
       if (err && err.code === 'ENOENT') return reject(new Error('AWS CLI not found. Install AWS CLI v2 and sign in (aws configure / aws sso login).'));
       if (err) return reject(new Error((stderr || err.message).trim().split('\n').pop()));
       try { resolve(JSON.parse(stdout || '{}')); } catch { reject(new Error('Unexpected AWS CLI output')); }
@@ -173,4 +181,4 @@ async function main(argv = process.argv.slice(2)) {
 }
 
 if (require.main === module) main().then((code) => { process.exitCode = code; });
-module.exports = { main, scan, parseArgs, table };
+module.exports = { main, scan, parseArgs, table, awsRunner, ALL_SERVICES };
