@@ -1,4 +1,4 @@
-<p align="center"><img src="https://raw.githubusercontent.com/Het101/retirement-radar/main/docs/banner.png" alt="Retirement Radar: find AWS resources before end of support costs you money" width="100%"></p>
+<p align="center"><img src="https://cdn.jsdelivr.net/gh/Het101/retirement-radar@main/docs/banner.png" alt="Retirement Radar: find AWS resources before end of support costs you money" width="100%"></p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/retirement-radar"><img src="https://img.shields.io/npm/v/retirement-radar?color=E5484D&label=npm" alt="npm version"></a>
@@ -14,7 +14,7 @@ Find what in your AWS account is about to lose support before it starts costing 
 npx retirement-radar scan
 ```
 
-<img src="https://raw.githubusercontent.com/Het101/retirement-radar/main/docs/scan-output.png" alt="Example output: a table of resources with status RETIRED, EXTENDED, SOON or UPCOMING, the end-of-support date and what it means, plus the monthly EKS extended support cost" width="100%">
+<img src="https://cdn.jsdelivr.net/gh/Het101/retirement-radar@main/docs/scan-output.png" alt="Example output: a table of resources with status RETIRED, EXTENDED, SOON or UPCOMING, the end-of-support date and what it means, plus the monthly EKS extended support cost" width="100%">
 
 <sub>Example output with sample data.</sub>
 
